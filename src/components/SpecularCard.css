@@ -1,0 +1,33 @@
+.specular-card {
+  position: relative;
+  display: block;
+  border-radius: var(--sc-radius, 16px);
+}
+
+/* Stat blocks have no background of their own — give them a glass surface */
+.specular-card--stat {
+  padding: 22px 20px;
+  background: rgba(12, 12, 16, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* Canvas extends past the card so the rim glow can bleed outside the edge */
+.specular-card__fx {
+  position: absolute;
+  inset: -20px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.specular-card__fx canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.specular-card__content {
+  position: relative;
+  z-index: 2;
+}
