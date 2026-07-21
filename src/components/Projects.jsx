@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import SpecularCard from './SpecularCard'
 import TvcMarquee from './TvcMarquee'
 import { projects } from '../data/content'
@@ -7,11 +7,36 @@ import { revealHead, staggerItems, parallax } from '../lib/animations'
 
 function ProjectCard({ p }) {
   const videoRef = useRef(null)
+  const cardRef = useRef(null)
   const [playing, setPlaying] = useState(false)
   const [duration, setDuration] = useState(0)
   const [progress, setProgress] = useState(0)
+  const [inView, setInView] = useState(false)
   const isVideo = p.media.type === 'video' && p.media.src
   const isLink = Boolean(p.link)
+
+  // 懒加载：卡片进入视口附近才挂载视频 src，避免首屏并发拉取全部视频
+  useEffect(() => {
+    const el = cardRef.current
+    if (!el) return
+    if (!('IntersectionObserver' in window)) {
+      setInView(true)
+      return
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            setInView(true)
+            io.disconnect()
+          }
+        })
+      },
+      { rootMargin: '200px' },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
 
   const handlePlay = (e) => {
     e.preventDefault()
@@ -52,16 +77,16 @@ function ProjectCard({ p }) {
           {isVideo ? (
             <video
               ref={videoRef}
-              src={p.media.src}
+              src={inView ? p.media.src : undefined}
               poster={p.media.poster}
-              preload="metadata"
+              preload={inView ? 'metadata' : 'none'}
               playsInline
               onEnded={handleEnded}
               onLoadedMetadata={handleLoadedMeta}
               onTimeUpdate={handleTimeUpdate}
             />
           ) : p.media.type === 'image' && p.media.src ? (
-            <img src={p.media.src} alt={p.title} />
+            <img src={p.media.src} alt={p.title} loading="lazy" decoding="async" />
           ) : (
             <div className="project__placeholder">
               <span className="project__play" aria-hidden="true">
@@ -107,7 +132,7 @@ function ProjectCard({ p }) {
   )
 
   return (
-    <div className="project sec-item">
+    <div className="project sec-item" ref={cardRef}>
       <SpecularCard className="project__spec" radius={20}>
         {isLink ? (
           <a

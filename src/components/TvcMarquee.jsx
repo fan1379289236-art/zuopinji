@@ -1,12 +1,37 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { tvc } from '../data/content'
 
 function TvcCard({ item, onPlayState }) {
   const videoRef = useRef(null)
+  const cardRef = useRef(null)
   const [playing, setPlaying] = useState(false)
   const [duration, setDuration] = useState(0)
   const [progress, setProgress] = useState(0)
+  const [inView, setInView] = useState(false)
   const hasMedia = item.media?.type === 'video' && item.media.src
+
+  // 懒加载：卡片进入视口才挂载视频 src，避免首屏并发拉取全部跑马灯视频
+  useEffect(() => {
+    const el = cardRef.current
+    if (!el || !hasMedia) return
+    if (!('IntersectionObserver' in window)) {
+      setInView(true)
+      return
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            setInView(true)
+            io.disconnect()
+          }
+        })
+      },
+      { rootMargin: '150px' },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [hasMedia])
 
   const handlePlay = (e) => {
     e.preventDefault()
@@ -40,14 +65,14 @@ function TvcCard({ item, onPlayState }) {
   }
 
   return (
-    <div className="tvc__card">
+    <div className="tvc__card" ref={cardRef}>
       <div className="tvc__media">
         {hasMedia ? (
           <video
             ref={videoRef}
-            src={item.media.src}
+            src={inView ? item.media.src : undefined}
             poster={item.media.poster}
-            preload="metadata"
+            preload={inView ? 'metadata' : 'none'}
             playsInline
             onEnded={handleEnded}
             onLoadedMetadata={handleLoadedMeta}
