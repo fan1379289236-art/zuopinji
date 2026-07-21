@@ -10,14 +10,26 @@ export default function Hero() {
   const refs = useRef([])
   const heroRef = useRef(null)
 
-  // 切到当前视频时自动播放（静音 + playsInline 可绕过浏览器自动播放限制）
+  // React 的 muted prop 不保证设置到 DOM property，浏览器据此拦截自动播放。
+  // 必须在 ref 上强制把 muted 设为 property，否则静音自动播放会被浏览器拒绝。
   useEffect(() => {
-    const v = refs.current[idx]
+    refs.current.forEach((v) => {
+      if (v) v.muted = true
+    })
+  }, [])
+
+  // 切到当前视频时自动播放（静音 + playsInline 可绕过浏览器自动播放限制）
+  const tryPlay = (v) => {
     if (!v) return
+    v.muted = true
     const p = v.play()
     if (p && typeof p.catch === 'function') {
       p.catch((err) => console.warn('[Hero video] play() failed:', err))
     }
+  }
+
+  useEffect(() => {
+    tryPlay(refs.current[idx])
   }, [idx])
 
   const handleNext = () => setIdx((i) => (i + 1) % HERO_VIDEOS.length)
@@ -83,6 +95,7 @@ export default function Hero() {
             key={src}
             ref={(el) => {
               refs.current[i] = el
+              if (el) el.muted = true
             }}
             className="hero__video"
             src={src}
@@ -91,7 +104,10 @@ export default function Hero() {
             preload={i === 0 ? 'auto' : 'metadata'}
             autoPlay={i === 0}
             onCanPlay={() => {
-              if (i === idx) setReady(true)
+              if (i === idx) {
+                setReady(true)
+                tryPlay(refs.current[i])
+              }
             }}
             onEnded={handleNext}
             style={{ opacity: i === idx ? 1 : 0 }}
