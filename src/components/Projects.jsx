@@ -4,6 +4,7 @@ import TvcMarquee from './TvcMarquee'
 import { projects } from '../data/content'
 import { useGSAP } from '../lib/gsap'
 import { revealHead, staggerItems, parallax } from '../lib/animations'
+import { registerPlayer, requestPlay } from '../lib/videoCoordinator'
 
 function ProjectCard({ p }) {
   const videoRef = useRef(null)
@@ -38,11 +39,26 @@ function ProjectCard({ p }) {
     return () => io.disconnect()
   }, [])
 
+  // 注册到视频协调器：播放本卡时，其它卡会被暂停并回到初始状态
+  useEffect(() => {
+    const stop = () => {
+      const v = videoRef.current
+      if (v) {
+        v.pause()
+        v.currentTime = 0
+        v.controls = false
+      }
+      setPlaying(false)
+    }
+    return registerPlayer(p.id, stop)
+  }, [p.id])
+
   const handlePlay = (e) => {
     e.preventDefault()
     e.stopPropagation()
     const v = videoRef.current
     if (!v) return
+    requestPlay(p.id) // 先暂停其它视频
     v.muted = false
     v.controls = true
     v.play()

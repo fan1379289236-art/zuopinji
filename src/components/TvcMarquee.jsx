@@ -1,7 +1,8 @@
 import { useRef, useState, useEffect } from 'react'
 import { tvc } from '../data/content'
+import { registerPlayer, requestPlay } from '../lib/videoCoordinator'
 
-function TvcCard({ item, onPlayState }) {
+function TvcCard({ item, onPlayState, playerId }) {
   const videoRef = useRef(null)
   const cardRef = useRef(null)
   const [playing, setPlaying] = useState(false)
@@ -33,11 +34,27 @@ function TvcCard({ item, onPlayState }) {
     return () => io.disconnect()
   }, [hasMedia])
 
+  // 注册到视频协调器：播放本卡时，其它卡（含项目视频与其它广告）会被暂停并回到初始状态
+  useEffect(() => {
+    const stop = () => {
+      const v = videoRef.current
+      if (v) {
+        v.pause()
+        v.currentTime = 0
+        v.controls = false
+      }
+      setPlaying(false)
+      onPlayState(false)
+    }
+    return registerPlayer(playerId, stop)
+  }, [playerId, onPlayState])
+
   const handlePlay = (e) => {
     e.preventDefault()
     e.stopPropagation()
     const v = videoRef.current
     if (!v) return
+    requestPlay(playerId) // 先暂停其它视频
     v.muted = false
     v.controls = true
     v.play()
@@ -127,7 +144,7 @@ export default function TvcMarquee() {
           style={{ animationDuration: `${tvc.length * 7}s` }}
         >
           {loop.map((item, i) => (
-            <TvcCard key={`${item.id}-${i}`} item={item} onPlayState={setPaused} />
+            <TvcCard key={`${item.id}-${i}`} item={item} onPlayState={setPaused} playerId={`${item.id}-${i}`} />
           ))}
         </div>
       </div>
